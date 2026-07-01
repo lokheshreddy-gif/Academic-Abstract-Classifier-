@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Large data files - exclude only large datasets, keep important CSVs
+# Keep: confusion_matrix.csv, misclassified_samples.csv, test.csv, train.csv, val.csv
+# Exclude: arxiv_data*.csv (large datasets)
+arxiv_data*.csv
+arXiv_scientific dataset.csv
+*.zip
+artifacts.zip
+
+# Model files - include final_model but exclude old backups
+# final_model/ - including model files
+old/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
