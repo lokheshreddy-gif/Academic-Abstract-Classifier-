@@ -1,188 +1,131 @@
-# 📚 Academic Abstract Classifier
+## Abstract Classification Service
 
-Academic Abstract Classifier is a machine learning-based Natural Language Processing (NLP) application that automatically categorizes research paper abstracts into predefined academic domains. The project leverages classical machine learning algorithms combined with text preprocessing and feature engineering to achieve accurate and efficient document classification.
+This project trains a small, fast Transformer-based classifier for academic paper abstracts
+and exposes a lightweight REST API for inference.
 
----
+### 1. Environment setup
 
-## 🚀 Features
-
-- 📄 Automatic classification of academic paper abstracts
-- 🧹 Advanced text preprocessing and cleaning
-- 🔤 TF-IDF feature extraction for text representation
-- 🤖 Multiple machine learning models for comparison
-- 📊 Model evaluation using cross-validation
-- ⚙️ Hyperparameter tuning for improved performance
-- 📈 Performance metrics including Accuracy, Precision, Recall, and F1-Score
-- 📉 Confusion Matrix visualization
-
----
-
-## 🛠️ Tech Stack
-
-### Programming Language
-- Python
-
-### Libraries
-- Scikit-learn
-- Pandas
-- NumPy
-- NLTK
-- Matplotlib
-- Seaborn
-
-### Machine Learning Models
-- Logistic Regression
-- Support Vector Machine (SVM)
-- Multinomial Naive Bayes
-
-### Feature Engineering
-- TF-IDF Vectorization
-
----
-
-## 📂 Project Structure
-
-```
-Academic-Abstract-Classifier/
-│
-├── dataset/                 # Dataset files
-├── notebooks/               # Jupyter notebooks
-├── models/                  # Saved trained models
-├── src/
-│   ├── preprocessing.py
-│   ├── feature_extraction.py
-│   ├── train.py
-│   ├── evaluate.py
-│   └── predict.py
-├── requirements.txt
-└── README.md
-```
-
----
-
-## ✨ Key Functionalities
-
-### Text Preprocessing
-- Lowercasing
-- Tokenization
-- Stopword removal
-- Punctuation removal
-- Stemming/Lemmatization
-
-### Feature Extraction
-- TF-IDF Vectorization
-- Vocabulary generation
-- Sparse feature representation
-
-### Machine Learning Models
-- Logistic Regression
-- Support Vector Machine (SVM)
-- Multinomial Naive Bayes
-
-### Model Evaluation
-- Cross-validation
-- Hyperparameter tuning using GridSearchCV
-- Accuracy, Precision, Recall, F1-Score
-- Confusion Matrix
-
----
-
-## ⚙️ Installation
-
-### Clone the repository
-
-```bash
-git clone https://github.com/your-username/Academic-Abstract-Classifier.git
-```
-
-Navigate to the project directory
-
-```bash
-cd Academic-Abstract-Classifier
-```
-
-### Install dependencies
+- **Python**: 3.9 or 3.10 recommended.
+- **Install dependencies**:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Train the model
+If you have a GPU and CUDA installed, `torch` will use it automatically. On CPU-only
+machines, training will automatically limit the subset size to keep things fast.
+
+### 2. Training the model
+
+1. Place your dataset (CSV/TSV) in the project root (already provided as `arxiv_data.csv`).
+2. Run the training script:
 
 ```bash
-python src/train.py
+python train_model.py
 ```
 
-### Evaluate the model
+The script will:
+
+- Auto-detect the abstract and label columns.
+- Clean and filter the data (remove missing and very short abstracts).
+- Build a balanced subset (up to ~1,200 samples, or 800 on CPU-only).
+- Split into **train / val / test** (80/10/10, stratified by label).
+- Train a **DistilBERT** classifier for 1 epoch.
+- Save artifacts:
+  - `final_model/` (model + tokenizer + `labels.json`)
+  - `train.csv`, `val.csv`, `test.csv`
+  - `metrics.json` (includes accuracy, macro precision/recall/F1, per-class metrics)
+  - `confusion_matrix.csv`
+  - `misclassified_samples.csv`
+
+### 3. Running the API locally
+
+After training has completed and `final_model/` exists:
 
 ```bash
-python src/evaluate.py
+uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
-### Predict a new abstract
+#### Health check
 
 ```bash
-python src/predict.py
+curl http://localhost:8000/health
 ```
 
----
+Expected response:
 
-## 📊 Model Pipeline
+```json
+{"status": "ok"}
+```
 
-1. Load dataset
-2. Text preprocessing
-3. TF-IDF vectorization
-4. Train multiple classifiers
-5. Hyperparameter tuning
-6. Cross-validation
-7. Model evaluation
-8. Predict category for new abstracts
+#### Get labels
 
----
+```bash
+curl http://localhost:8000/labels
+```
 
-## 📈 Evaluation Metrics
+Returns a JSON array of label names used during training.
 
-- Accuracy
-- Precision
-- Recall
-- F1-Score
-- Cross-Validation Score
-- Confusion Matrix
+#### Predict
 
----
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"abstract":"This paper proposes a transformer-based method for efficient document classification..."}'
+```
 
-## 📸 Screenshots
+Example response:
 
-Include screenshots for:
+```json
+{
+  "label": "cs.LG",
+  "score": 0.9234,
+  "all_scores": [
+    {"label": "cs.LG", "score": 0.9234},
+    {"label": "cs.AI", "score": 0.0345}
+  ]
+}
+```
 
-- Dataset overview
-- Text preprocessing output
-- Model training
-- Accuracy comparison
-- Confusion matrix
-- Prediction results
+### 4. Docker usage
 
----
+Build the image:
 
-## 🎯 Future Enhancements
+```bash
+docker build -t abstract-classifier .
+```
 
-- Deep Learning models (LSTM, GRU)
-- Transformer-based models (BERT, RoBERTa)
-- Multi-label document classification
-- Web-based prediction interface
-- Explainable AI for prediction interpretation
-- Deployment using Flask or FastAPI
+Train inside the container (optional, you can also train on the host and just copy `final_model/`):
 
----
+```bash
+docker run --rm -v ${PWD}:/app abstract-classifier python train_model.py
+```
 
-## 👨‍💻 Author
+Serve the API:
 
-**Mallela Lokesh Reddy**
+```bash
+docker run --rm -p 8000:8000 -v ${PWD}:/app abstract-classifier \
+  uvicorn app:app --host 0.0.0.0 --port 8000
+```
 
-B.Tech – Computer Science and Engineering
+### 5. Deployment options
 
----
+- **Render / Railway**:
+  - Use this repo.
+  - Set the start command to:
 
-## 📄 License
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000
+```
 
-This project is intended for educational and research purposes.
+- **Hugging Face Space**:
+  - Create a Space with **Docker** or **FastAPI** backend.
+  - Use this `Dockerfile` or `app.py` + `requirements.txt`.
+
+Once deployed, Cursor (or any client) can:
+
+- Call `GET /health` for liveness.
+- Call `GET /labels` to show possible categories.
+- Call `POST /predict` with an abstract string to get the predicted label and scores.
+
+
